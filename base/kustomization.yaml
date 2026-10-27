@@ -5,6 +5,8 @@ resources:
   - namespace.yaml
   - api
   - tiles
+  - worker
+  - settings
   - tile-cache
   - storage
   - ingress.yaml

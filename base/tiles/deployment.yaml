@@ -1,3 +1,4 @@
+# Tile server: Deep Zoom tiles cut on demand from the pyramidal TIFF of each image.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,6 +21,22 @@ spec:
         - name: tiles
           image: cragradar-backend
           command: ["uvicorn", "cragradar_backend.tiles.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          env:
+            - name: CRAGRADAR_SETTINGS_FILE
+              value: /etc/cragradar/settings.yaml
+            - name: PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cragradar-config
+                  key: PUBLIC_URL
+            - name: CRAGRADAR_OIDC__ISSUER
+              value: $(PUBLIC_URL)/auth/realms/cragradar
+            # Created by CloudNativePG for the owner of the `cragradar` database.
+            - name: CRAGRADAR_DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-app
+                  key: uri
           ports:
             - name: http
               containerPort: 8000
@@ -32,6 +49,9 @@ spec:
               path: /tiles/healthz
               port: http
           volumeMounts:
+            - name: settings
+              mountPath: /etc/cragradar
+              readOnly: true
             - name: image-data
               mountPath: /data
           resources:
@@ -39,8 +59,11 @@ spec:
               cpu: 50m
               memory: 128Mi
             limits:
-              memory: 512Mi
+              memory: 1Gi
       volumes:
+        - name: settings
+          configMap:
+            name: backend-settings
         - name: image-data
           persistentVolumeClaim:
             claimName: image-data

@@ -1,3 +1,4 @@
+# API: admin, uploads (tus), images, and /api/authz for the nginx tile cache.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,20 +17,51 @@ spec:
         app.kubernetes.io/name: api
         app.kubernetes.io/part-of: cragradar
     spec:
-      containers:
-        - name: api
+      # Applies pending database migrations before the API starts.
+      initContainers:
+        - name: migrate
           image: cragradar-backend
-          command: ["uvicorn", "cragradar_backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          command: ["cragradar-migrate", "upgrade", "head"]
           env:
+            - name: CRAGRADAR_SETTINGS_FILE
+              value: /etc/cragradar/settings.yaml
             - name: PUBLIC_URL
               valueFrom:
                 configMapKeyRef:
                   name: cragradar-config
                   key: PUBLIC_URL
-            - name: CRAGRADAR_OIDC_ISSUER
+            - name: CRAGRADAR_OIDC__ISSUER
               value: $(PUBLIC_URL)/auth/realms/cragradar
-            - name: CRAGRADAR_OIDC_JWKS_URL
-              value: http://keycloak/auth/realms/cragradar/protocol/openid-connect/certs
+            # Created by CloudNativePG for the owner of the `cragradar` database.
+            - name: CRAGRADAR_DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-app
+                  key: uri
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/cragradar
+              readOnly: true
+      containers:
+        - name: api
+          image: cragradar-backend
+          command: ["uvicorn", "cragradar_backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          env:
+            - name: CRAGRADAR_SETTINGS_FILE
+              value: /etc/cragradar/settings.yaml
+            - name: PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cragradar-config
+                  key: PUBLIC_URL
+            - name: CRAGRADAR_OIDC__ISSUER
+              value: $(PUBLIC_URL)/auth/realms/cragradar
+            # Created by CloudNativePG for the owner of the `cragradar` database.
+            - name: CRAGRADAR_DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-app
+                  key: uri
           ports:
             - name: http
               containerPort: 8000
@@ -42,6 +74,9 @@ spec:
               path: /api/healthz
               port: http
           volumeMounts:
+            - name: settings
+              mountPath: /etc/cragradar
+              readOnly: true
             - name: image-data
               mountPath: /data
           resources:
@@ -51,6 +86,9 @@ spec:
             limits:
               memory: 512Mi
       volumes:
+        - name: settings
+          configMap:
+            name: backend-settings
         - name: image-data
           persistentVolumeClaim:
             claimName: image-data

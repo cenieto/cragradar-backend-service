@@ -1,0 +1,32 @@
+# Settings shared by api, tiles and worker, read with pydantic-settings
+# (cragradar_backend.core.settings). Mounted at /etc/cragradar/settings.yaml.
+#
+# Values that depend on the environment or are secret come as CRAGRADAR_* environment
+# variables, which win over this file: CRAGRADAR_OIDC__ISSUER, CRAGRADAR_DATABASE__URL.
+# An overlay can replace this whole file with a configMapGenerator `behavior: replace`.
+oidc:
+  jwks_url: http://keycloak/auth/realms/cragradar/protocol/openid-connect/certs
+  audience: cragradar-backend
+repository:
+  type: local
+  base_url: /storage
+  base_root: /data/images
+  path_generator:
+    type: date
+    timezone: UTC
+tiler:
+  type: deepzoom
+  tile_size: 254
+  overlap: 1
+  format: jpeg
+  jpeg_quality: 85
+upload:
+  staging_root: /data/staging
+  max_size_bytes: 10737418240
+pyramid:
+  tile_size: 256
+  compression: jpeg
+  quality: 90
+worker:
+  poll_interval_seconds: 2
+  lease_seconds: 120

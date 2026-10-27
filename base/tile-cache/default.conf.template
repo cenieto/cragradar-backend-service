@@ -50,6 +50,9 @@ server {
         proxy_cache_key $uri;
         proxy_cache_valid 200 30d;
         proxy_cache_lock on;
+        # Browser cache: private because tiles need a token, immutable because tile URLs
+        # contain the image version.
+        add_header Cache-Control "private, max-age=31536000, immutable";
 
         add_header X-Tile-Cache $upstream_cache_status always;
         add_header X-Authz-Cache $authz_cache_status always;

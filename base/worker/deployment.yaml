@@ -1,0 +1,59 @@
+# Ingest worker: converts each complete upload to a pyramidal TIFF. libvips streams the image;
+# a 959 MB, 1.2 gigapixel JPEG peaked at about 1.2 GiB.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app.kubernetes.io/name: worker
+    app.kubernetes.io/part-of: cragradar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker
+        app.kubernetes.io/part-of: cragradar
+    spec:
+      containers:
+        - name: worker
+          image: cragradar-backend
+          command: ["cragradar-worker"]
+          env:
+            - name: CRAGRADAR_SETTINGS_FILE
+              value: /etc/cragradar/settings.yaml
+            - name: PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cragradar-config
+                  key: PUBLIC_URL
+            - name: CRAGRADAR_OIDC__ISSUER
+              value: $(PUBLIC_URL)/auth/realms/cragradar
+            # Created by CloudNativePG for the owner of the `cragradar` database.
+            - name: CRAGRADAR_DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-app
+                  key: uri
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/cragradar
+              readOnly: true
+            - name: image-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 2Gi
+      volumes:
+        - name: settings
+          configMap:
+            name: backend-settings
+        - name: image-data
+          persistentVolumeClaim:
+            claimName: image-data

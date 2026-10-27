@@ -10,10 +10,11 @@ Always Free ARM VM). Only the overlays differ.
 platform/
   operators/              CloudNativePG operator (cluster-wide, installed once, server-side)
   postgres/               CNPG Cluster with PostGIS: databases `cragradar` and `keycloak`
-  redis/                  Valkey: job queue, authorization cache
+  redis/                  Valkey: caches
   keycloak/               Keycloak under /auth + realm `cragradar` (roles, clients)
 base/
-  api/  tiles/            backend Deployments + Services
+  settings/               ConfigMap backend-settings: settings.yaml of api, tiles and worker
+  api/  tiles/  worker/   backend Deployments (+ Services); api runs migrations in an init container
   tile-cache/             nginx: auth_request -> api /api/authz/tiles, proxy_cache of tiles
   storage/                PVC image-data (originals and pyramids)
   ingress.yaml            /api -> api, /tiles -> tile-cache
