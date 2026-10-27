@@ -24,7 +24,7 @@ overlays/
 secrets/                  SOPS-encrypted secrets (*.enc.yaml)
 ```
 
-Deploy with `kubectl apply -k overlays/<target>`.
+Deploy with `kubectl apply -k overlays/<target>` (Kustomize, built into kubectl; no Helm).
 
 ## Environment differences (only in overlays)
 
