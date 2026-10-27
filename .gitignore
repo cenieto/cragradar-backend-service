@@ -1,0 +1,6 @@
+# Decrypted secrets must never be committed (only *.enc.yaml, encrypted with SOPS)
+*.dec.yaml
+secrets/*.yaml
+!secrets/*.enc.yaml
+.kube/
+*.kubeconfig
