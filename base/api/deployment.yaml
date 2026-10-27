@@ -20,6 +20,16 @@ spec:
         - name: api
           image: cragradar-backend
           command: ["uvicorn", "cragradar_backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          env:
+            - name: PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cragradar-config
+                  key: PUBLIC_URL
+            - name: CRAGRADAR_OIDC_ISSUER
+              value: $(PUBLIC_URL)/auth/realms/cragradar
+            - name: CRAGRADAR_OIDC_JWKS_URL
+              value: http://keycloak/auth/realms/cragradar/protocol/openid-connect/certs
           ports:
             - name: http
               containerPort: 8000
@@ -31,9 +41,16 @@ spec:
             httpGet:
               path: /api/healthz
               port: http
+          volumeMounts:
+            - name: image-data
+              mountPath: /data
           resources:
             requests:
               cpu: 50m
               memory: 128Mi
             limits:
               memory: 512Mi
+      volumes:
+        - name: image-data
+          persistentVolumeClaim:
+            claimName: image-data

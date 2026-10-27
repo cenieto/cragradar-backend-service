@@ -1,0 +1,72 @@
+# Tile cache in front of the tile server. The nginx entrypoint replaces ${TILE_CACHE_MAX_SIZE}
+# from the environment; the other $variables are nginx variables.
+#
+# Every tile request is authorized by the API (auth_request). The answer is cached for 60 s per
+# token and image, so the API is called about once a minute per viewer and image, not per tile.
+# Tiles are cached by URL only, with no token in the key, so all viewers share the tile cache.
+# Tile URLs contain the image version, so a cached tile never goes stale.
+
+proxy_cache_path /var/cache/nginx/tiles levels=1:2 keys_zone=tiles:20m
+                 max_size=${TILE_CACHE_MAX_SIZE} inactive=30d use_temp_path=off;
+# Holds tokens in its keys: lives on a memory-backed volume, never on disk.
+proxy_cache_path /var/cache/nginx/authz levels=1 keys_zone=authz:10m
+                 max_size=64m inactive=5m use_temp_path=off;
+
+# The image id is the unit of authorization: /tiles/<image id>/...
+map $uri $tile_image_id {
+    ~^/tiles/(?<image_id>[^/]+)/ $image_id;
+    default "";
+}
+
+upstream tiles {
+    server tiles:80;
+    keepalive 16;
+}
+
+upstream api {
+    server api:80;
+    keepalive 16;
+}
+
+server {
+    listen 8080;
+
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location /tiles/ {
+        auth_request /_authz;
+        auth_request_set $authz_cache_status $upstream_cache_status;
+
+        proxy_pass http://tiles;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        # The tile server never sees the token.
+        proxy_set_header Authorization "";
+
+        proxy_cache tiles;
+        proxy_cache_key $uri;
+        proxy_cache_valid 200 30d;
+        proxy_cache_lock on;
+
+        add_header X-Tile-Cache $upstream_cache_status always;
+        add_header X-Authz-Cache $authz_cache_status always;
+    }
+
+    location = /_authz {
+        internal;
+        proxy_pass http://api/api/authz/tiles;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header X-Tile-Image-Id $tile_image_id;
+
+        proxy_cache authz;
+        proxy_cache_key "$http_authorization|$tile_image_id";
+        proxy_cache_valid 204 401 403 60s;
+    }
+}

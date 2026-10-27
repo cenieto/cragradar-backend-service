@@ -1,5 +1,39 @@
 # Local k3d cluster. Tilt deploys this overlay and replaces the image with its dev build.
+# Every secret here is a throwaway development value; the cloud overlay uses SOPS-encrypted ones.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: cragradar
 resources:
+  - ../../platform
   - ../../base
+configMapGenerator:
+  - name: cragradar-config
+    literals:
+      - PUBLIC_URL=http://cragradar.localhost:8080
+      - TILE_CACHE_MAX_SIZE=2g
+  # Users imported with the realm: admin/admin, editor/editor, viewer/viewer.
+  - name: keycloak-dev-users
+    files:
+      - cragradar-users-0.json=keycloak-dev-users.json
+    options:
+      disableNameSuffixHash: true
+# Fixed names: CNPG and Keycloak read some of these by name, which Kustomize cannot rewrite.
+secretGenerator:
+  - name: keycloak-admin
+    literals:
+      - username=admin
+      - password=admin
+    options:
+      disableNameSuffixHash: true
+  - name: keycloak-db
+    type: kubernetes.io/basic-auth
+    literals:
+      - username=keycloak
+      - password=keycloak-dev
+    options:
+      disableNameSuffixHash: true
+  - name: keycloak-backend-client
+    literals:
+      - client-secret=backend-dev-secret
+    options:
+      disableNameSuffixHash: true

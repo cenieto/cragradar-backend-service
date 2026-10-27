@@ -4,27 +4,35 @@ Kubernetes manifests that deploy the CragRadar backend and the shared platform s
 manifests deploy to the local cluster (k3d on WSL) and to the cloud cluster (k3s on an Oracle Cloud
 Always Free ARM VM). Only the overlays differ.
 
-## Planned layout
+## Layout
 
 ```
-platform/                 shared services, installed once per cluster
-  postgres/               CloudNativePG cluster with a PostGIS image
-  redis/                  Valkey/Redis (job queue, authorization cache)
-  keycloak/               Keycloak + realm export (clients, roles)
-base/                     backend workloads
-  api/                    Deployment + Service
-  tiles/                  Deployment + Service
-  worker/                 Deployment
-  tile-cache/             nginx: auth_request -> api /authz, proxy_cache of tiles
-  storage/                PVCs: originals and pyramids, nginx cache
-  ingress.yaml
+platform/
+  operators/              CloudNativePG operator (cluster-wide, installed once, server-side)
+  postgres/               CNPG Cluster with PostGIS: databases `cragradar` and `keycloak`
+  redis/                  Valkey: job queue, authorization cache
+  keycloak/               Keycloak under /auth + realm `cragradar` (roles, clients)
+base/
+  api/  tiles/            backend Deployments + Services
+  tile-cache/             nginx: auth_request -> api /api/authz/tiles, proxy_cache of tiles
+  storage/                PVC image-data (originals and pyramids)
+  ingress.yaml            /api -> api, /tiles -> tile-cache
 overlays/
-  local/                  k3d: image tags, small resources, *.localhost hosts, no TLS
-  cloud/                  OCI k3s: domain, TLS (cert-manager), cache size, backups
-secrets/                  SOPS-encrypted secrets (*.enc.yaml)
+  local/                  k3d: PUBLIC_URL, cache size, development secrets and users
+  cloud/                  (to do) domain, TLS, SOPS secrets, backups
 ```
 
-Deploy with `kubectl apply -k overlays/<target>` (Kustomize, built into kubectl; no Helm).
+Install once per cluster, then deploy:
+
+```
+kubectl apply --server-side -k platform/operators
+kubectl apply -k overlays/<target>
+```
+
+Locally, `scripts/cluster.sh create` and `tilt up` in the umbrella repository do both.
+
+Each overlay provides the ConfigMap `cragradar-config` (`PUBLIC_URL`, `TILE_CACHE_MAX_SIZE`) and
+the Secrets `keycloak-admin`, `keycloak-db` and `keycloak-backend-client`.
 
 ## Environment differences (only in overlays)
 

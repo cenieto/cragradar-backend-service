@@ -1,0 +1,35 @@
+{
+  "realm": "cragradar",
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@cragradar.localhost",
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["platform_admin"]
+    },
+    {
+      "username": "editor",
+      "email": "editor@cragradar.localhost",
+      "firstName": "Content",
+      "lastName": "Generator",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "editor", "temporary": false }],
+      "realmRoles": ["content_generator"]
+    },
+    {
+      "username": "viewer",
+      "email": "viewer@cragradar.localhost",
+      "firstName": "Content",
+      "lastName": "Viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "viewer", "temporary": false }],
+      "realmRoles": ["viewer"]
+    }
+  ]
+}

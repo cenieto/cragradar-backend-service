@@ -1,0 +1,78 @@
+{
+  "realm": "cragradar",
+  "displayName": "CragRadar",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      { "name": "platform_admin", "description": "Manages content generators" },
+      { "name": "content_generator", "description": "Uploads and annotates images, manages viewers" },
+      { "name": "viewer", "description": "Views the content that shares a tag with them" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "cragradar-frontend",
+      "name": "CragRadar web app",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["${PUBLIC_URL}/*"],
+      "webOrigins": ["${PUBLIC_URL}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${PUBLIC_URL}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "backend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "cragradar-backend",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "cragradar-backend",
+      "name": "CragRadar backend",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${BACKEND_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "backend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "cragradar-backend",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-cragradar-backend",
+      "enabled": true,
+      "serviceAccountClientId": "cragradar-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users"]
+      }
+    }
+  ]
+}

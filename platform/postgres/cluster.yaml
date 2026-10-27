@@ -1,0 +1,31 @@
+# PostgreSQL + PostGIS, managed by CloudNativePG. CNPG creates:
+#   - Services postgres-rw (read-write) and postgres-ro
+#   - Secret postgres-app with the credentials and URI of the `cragradar` database owner
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgis:18.4-3.6.4-standard-trixie
+  storage:
+    size: 5Gi
+  bootstrap:
+    initdb:
+      database: cragradar
+      owner: cragradar
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS postgis;
+  managed:
+    roles:
+      - name: keycloak
+        ensure: present
+        login: true
+        passwordSecret:
+          name: keycloak-db
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi

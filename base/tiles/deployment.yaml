@@ -31,9 +31,16 @@ spec:
             httpGet:
               path: /tiles/healthz
               port: http
+          volumeMounts:
+            - name: image-data
+              mountPath: /data
           resources:
             requests:
               cpu: 50m
               memory: 128Mi
             limits:
               memory: 512Mi
+      volumes:
+        - name: image-data
+          persistentVolumeClaim:
+            claimName: image-data

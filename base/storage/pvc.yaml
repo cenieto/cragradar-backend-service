@@ -1,0 +1,11 @@
+# Originals and pyramidal TIFFs, shared by api, tiles and worker. ReadWriteOnce works because the
+# cluster has a single node; more nodes require moving images to S3.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: image-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi

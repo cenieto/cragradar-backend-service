@@ -1,0 +1,120 @@
+# Keycloak, served under /auth on the public hostname of the app. Pods reach it through the
+# `keycloak` Service; KC_HOSTNAME keeps the token issuer equal to the public URL either way.
+#
+# Expects from the overlay:
+#   ConfigMap cragradar-config: PUBLIC_URL
+#   Secret keycloak-admin: username, password (bootstrap admin of the master realm)
+#   Secret keycloak-db: username, password (also used by CNPG to create the role)
+#   Secret keycloak-backend-client: client-secret (of the cragradar-backend client)
+#   ConfigMap keycloak-dev-users (optional): cragradar-users-0.json, imported with the realm
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: cragradar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+        app.kubernetes.io/part-of: cragradar
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8.1
+          # Imports the realm only when it does not exist yet.
+          args: ["start", "--import-realm"]
+          env:
+            - name: PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cragradar-config
+                  key: PUBLIC_URL
+            - name: KC_HOSTNAME
+              value: $(PUBLIC_URL)/auth
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            - name: KC_HTTP_RELATIVE_PATH
+              value: /auth
+            # TLS ends at the ingress.
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgres-rw:5432/keycloak
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: password
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: username
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+            # Substituted into the realm file at import.
+            - name: BACKEND_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-backend-client
+                  key: client-secret
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          startupProbe:
+            httpGet:
+              path: /auth/health/started
+              port: management
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: management
+          livenessProbe:
+            httpGet:
+              path: /auth/health/live
+              port: management
+          volumeMounts:
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 768Mi
+            # The JVM sizes its heap from this limit; about 800 Mi are used at idle.
+            limits:
+              memory: 1536Mi
+      volumes:
+        - name: realm-import
+          projected:
+            sources:
+              - configMap:
+                  name: keycloak-realm
+              - configMap:
+                  name: keycloak-dev-users
+                  optional: true

@@ -1,0 +1,65 @@
+# Expects from the overlay: ConfigMap cragradar-config with TILE_CACHE_MAX_SIZE (e.g. 2g), which
+# must stay below the size of the tile-cache-data volume.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tile-cache
+  labels:
+    app.kubernetes.io/name: tile-cache
+    app.kubernetes.io/part-of: cragradar
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tile-cache
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tile-cache
+        app.kubernetes.io/part-of: cragradar
+    spec:
+      securityContext:
+        fsGroup: 101
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:1.29-alpine
+          env:
+            - name: TILE_CACHE_MAX_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: cragradar-config
+                  key: TILE_CACHE_MAX_SIZE
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/templates
+              readOnly: true
+            - name: tiles-cache
+              mountPath: /var/cache/nginx/tiles
+            - name: authz-cache
+              mountPath: /var/cache/nginx/authz
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: tile-cache
+        - name: tiles-cache
+          persistentVolumeClaim:
+            claimName: tile-cache-data
+        - name: authz-cache
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
