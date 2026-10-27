@@ -1,0 +1,24 @@
+# No host here: the cloud overlay adds the domain and TLS.
+# /tiles goes straight to the tile server for now; the nginx tile cache will sit in between.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  name: http
+          - path: /tiles
+            pathType: Prefix
+            backend:
+              service:
+                name: tiles
+                port:
+                  name: http

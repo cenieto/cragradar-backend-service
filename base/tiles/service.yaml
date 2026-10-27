@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tiles
+  labels:
+    app.kubernetes.io/name: tiles
+    app.kubernetes.io/part-of: cragradar
+spec:
+  selector:
+    app.kubernetes.io/name: tiles
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

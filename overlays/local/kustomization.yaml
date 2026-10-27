@@ -1,0 +1,5 @@
+# Local k3d cluster. Tilt deploys this overlay and replaces the image with its dev build.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
